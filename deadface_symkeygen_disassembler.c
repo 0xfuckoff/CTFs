@@ -6,7 +6,7 @@ char stack[36];
 u_int32_t prog[58] = { 0x91000, 0x92000, 0x93000, 0x91000, 0x92000, 0x50204, 0x0A0000, 0x32305, 0x0A1000, 0x6100F, 0x6300D, 0x0A2000, 0x22103, 0x91000, 0x23102, 0x0A3000, 0x92000, 0x0A2000, 0x91000, 0x91000, 0x63005, 0x22103, 0x0A2000, 0x0A1000, 0x93000, 0x61005, 0x42103, 0x53200, 0x0A3000, 0x91000, 0x92000, 0x93000, 0x91000, 0x92000, 0x50204, 0x0A0000, 0x32305, 0x0A1000, 0x6100F, 0x6300D, 0x0A2000, 0x22103, 0x91000, 0x23102, 0x0A3000, 0x92000, 0x0A2000, 0x91000, 0x91000, 0x63005, 0x22103, 0x0A2000, 0x0A1000, 0x93000, 0x61005, 0x42103, 0x53200, 0x0A3000 };
 u_int32_t regs[15] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 u_int32_t pc, ins, reg1, reg2, reg3, imm, fl;
-u_int32_t tmp;
+u_int32_t sp = 0;
 u_int32_t running = 1;
 
 u_int32_t fetch();
@@ -24,6 +24,9 @@ int main() {
     v4 = timer;
     printf("Beginning key generation at %lu\n", timer);
     run();
+    for (int i = 0; i < (sizeof(stack) / sizeof(stack[36])); i++) {
+        printf("%c", stack[i]);
+    }
 }
 
 u_int64_t eval() {
@@ -33,7 +36,7 @@ u_int64_t eval() {
                 running = 0;
                 break;
             }
-            case 9 : {
+            case 9: {
                 u_int32_t rand_num = rand();
                 u_int32_t rand_num_t = rand_num;
                 rand_num_t = rand_num_t >> 0x1C;
@@ -43,31 +46,28 @@ u_int64_t eval() {
                 rand_num_t = (rand_num + 0x46);
                 printf("PUSH R%d\n", *(&reg1) * 4);
                 regs[*(&reg1) * 4] = rand_num_t;
-                printf("MOVI R%d, %x\n\n", *(&reg1) * 4, rand_num_t);
+                printf("MOVI R%d, 0x%x\n\n", *(&reg1) * 4, rand_num_t);
                 break;
             }
             case 0x0A: {
-                u_int32_t idx = *(&reg1) * 4;
-                u_int32_t reg_val = regs[idx];
-                u_int32_t sp = tmp;
-                printf("PUSH R%d\n", idx);
+                u_int32_t tmp = sp;
+                printf("PUSH R%d\n", *(&reg1) * 4);
                 printf("PUSH SP\n");
-                idx = sp + 1;
+                sp += 1;
                 printf("INC SP\n");
-                tmp = idx;
-                stack[sp] = reg_val;
-                printf("MOV SP[%d] R%d \n", tmp, *(&reg1) * 4);
+                stack[tmp] = regs[*(&reg1) * 4];
+                printf("MOV SP[%d], R%d \n", tmp, *(&reg1) * 4);
                 fl = 0;
                 printf("SET FLAG ZERO\n\n");
                 break;
             }
             case 5: {
                 u_int32_t idx = *(&reg2) * 4;
-                u_int32_t reg_val = regs[idx];
+                u_int32_t reg_val_2 = regs[*(&reg2) * 4];
                 imm += reg_val;
-                printf("\nADD R%d, %x\n", idx, imm);
+                printf("\nADD R%d, 0x%x\n", idx, imm);
                 regs[*(&reg1) * 4] = imm;
-                printf("MOV R%d, %x\n", *(&reg1) * 4, imm);
+                printf("MOV R%d, 0x%x\n", *(&reg1) * 4, imm);
                 fl = 0;
                 printf("SET FLAG ZERO\n\n");
                 break;
@@ -76,7 +76,7 @@ u_int64_t eval() {
                 u_int32_t idx = *(&reg2) * 4;
                 u_int32_t reg_val = regs[idx];
                 reg_val -= imm;
-                printf("\nSUBI R%d, %x\n", idx, imm);
+                printf("\nSUBI R%d, 0x%x\n", idx, imm);
                 regs[*(&reg1) * 4] = reg_val;
                 printf("MOV R%d, R%d\n", (*(&reg1) * 4), (*(&reg2) * 4));
                 fl = regs[*(&reg1) * 4];
@@ -88,7 +88,9 @@ u_int64_t eval() {
                 printf("MOVI R%d, %x\n", *(&reg1) * 4, imm);
                 fl = 0;
                 printf("SET FLAG TO ZERO\n\n");
-                if (fl == 0) {
+                if (fl != 0) {
+                    pc = imm;
+                    printf("=======================UPDATING PC=======================\n\n\n");
                     fl = 0;
                 }
                 break;
@@ -105,7 +107,7 @@ u_int64_t eval() {
                 reg_val_1 = reg_val_2;
                 printf("MOV R%d, R%d\n", *(&reg1) * 4, *(&reg2) * 4);
                 fl = reg_val_1;
-                printf("SET FLAG TO R%d VALUE %x\n\n",  *(&reg1) * 4, reg_val_1);
+                printf("SET FLAG TO R%d VALUE 0x%x\n\n",  *(&reg1) * 4, reg_val_1);
                 break;
             }
             case 4: {
